@@ -1,5 +1,6 @@
 package com.example.onlinefooddeliverysb.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Size;
@@ -28,6 +29,10 @@ public class User {
 
     private String locationName;
     private String locationDescription;
+
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private Cart cart;
 
     public Long getId() {
         return id;
@@ -109,7 +114,15 @@ public class User {
         this.locationDescription = locationDescription;
     }
 
-    public User(String firstName, String lastName, String email, String phoneNumber, String password, USER_ROLE role, String confirmPassword, String locationName, String locationDescription) {
+    public Cart getCart() {
+        return cart;
+    }
+
+    public void setCart(Cart cart) {
+        this.cart = cart;
+    }
+
+    public User(String firstName, String lastName, String email, String phoneNumber, String password, USER_ROLE role, String confirmPassword, String locationName, String locationDescription, Cart cart) {
         this.firstName = firstName;
         this.lastName = lastName;
         this.email = email;
@@ -119,6 +132,7 @@ public class User {
         this.confirmPassword = confirmPassword;
         this.locationName = locationName;
         this.locationDescription = locationDescription;
+        this.cart = cart;
     }
 
     public User() {

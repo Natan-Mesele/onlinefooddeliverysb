@@ -11,6 +11,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Optional;
 
 @Service
@@ -25,46 +26,64 @@ public class CartService {
     @Autowired
     private FoodMenuRepository foodMenuRepository;
 
-    public Cart addFoodToCart(User user, Long foodMenuId) {
-        // Find the user's cart, or create a new one if it doesn't exist
-        Cart cart = cartRepository.findByUser(user).orElse(null);
+    public Cart addFoodToCart(User user, Long foodMenuId) throws Exception {
+        // Fetch the user's cart or create a new one
+        Cart cart = cartRepository.findByUser(user)
+                .orElseGet(() -> {
+                    Cart newCart = new Cart();
+                    newCart.setUser(user);
+                    return newCart;
+                });
 
-        if (cart == null) {
-            // If the cart doesn't exist, create a new cart and set the user
-            cart = new Cart();
-            cart.setUser(user);
-            cartRepository.save(cart);
-        }
-
-        // Find the food menu by ID
+        // Find the food menu item
         FoodMenu foodMenu = foodMenuRepository.findById(foodMenuId)
                 .orElseThrow(() -> new RuntimeException("Food menu not found"));
 
-        // Check if the food menu is already in the cart
-        Optional<CartItem> existingCartItem = cartItemRepository.findByCartAndFoodMenu(cart, foodMenu);
+        // Check if the item is already in the cart
+        CartItem cartItem = cart.getItems().stream()
+                .filter(item -> item.getFoodMenu().equals(foodMenu))
+                .findFirst()
+                .orElse(null);
 
-        if (existingCartItem.isPresent()) {
-            // If it exists, increase the quantity
-            CartItem cartItem = existingCartItem.get();
+        // If the item is in the cart, update the quantity; otherwise, add it
+        if (cartItem != null) {
             cartItem.setQuantity(cartItem.getQuantity() + 1);
             cartItem.calculateTotalPrice();
-            cartItemRepository.save(cartItem);
         } else {
-            // If it's a new food menu, add it to the cart
-            CartItem newCartItem = new CartItem();
-            newCartItem.setFoodMenu(foodMenu);
-            newCartItem.setCart(cart);
-            newCartItem.setQuantity(1);
-            newCartItem.calculateTotalPrice();
-            cartItemRepository.save(newCartItem);
-
-            // Add the new cart item to the cart's items list
-            cart.getItems().add(newCartItem);
+            cartItem = new CartItem();
+            cartItem.setFoodMenu(foodMenu);
+            cartItem.setCart(cart);
+            cartItem.setQuantity(1);
+            cartItem.calculateTotalPrice();
+            cart.getItems().add(cartItem);
         }
 
-        // Save the cart (if modifications were made)
-        cartRepository.save(cart);
-        return cart;
+        // Calculate the total price of the cart
+        double totalPrice = cart.getItems().stream()
+                .mapToDouble(item -> item.getTotalPrice())
+                .sum();
+        cart.setTotalPrice(totalPrice);
+
+        // Save the cart and return
+        return cartRepository.save(cart);
+    }
+
+    private Cart createNewCart(User user) {
+        Cart cart = new Cart();
+        cart.setUser(user);
+        cart.setItems(new ArrayList<>());
+        return cartRepository.save(cart);
+    }
+
+    public double calculateTotalPriceForUser(User user) {
+        // Find the user's cart
+        Cart cart = cartRepository.findByUser(user)
+                .orElseThrow(() -> new RuntimeException("Cart not found for user"));
+
+        // Sum up the totalPrice of all items in the cart
+        return cart.getItems().stream()
+                .mapToDouble(CartItem::getTotalPrice)
+                .sum();
     }
 
     public Cart getCartByUser(User user) {

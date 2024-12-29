@@ -22,12 +22,24 @@ public class CartController {
     @PostMapping("/add/{foodMenuId}")
     public ResponseEntity<Cart> addFoodToCart(
             @PathVariable Long foodMenuId,
-            @RequestHeader("Authorization") String jwt
-    ) throws Exception {
+            @RequestHeader("Authorization") String jwt) throws Exception {
+        // Get the user from the JWT token
         User user = userService.findUserByJwtToken(jwt);
+
+        // Add the food item to the user's cart
         Cart cart = cartService.addFoodToCart(user, foodMenuId);
+
+        // Calculate the total price for all items in the user's cart
+        double totalPrice = cart.getItems().stream()
+                .mapToDouble(item -> item.getFoodMenu().getPrice() * item.getQuantity())
+                .sum();
+
+        // Update the total price in the cart object (optional)
+        cart.setTotalPrice(totalPrice);
+
         return ResponseEntity.ok(cart);
     }
+
 
     @GetMapping
     public ResponseEntity<Cart> getCart(

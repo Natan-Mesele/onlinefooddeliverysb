@@ -1,5 +1,6 @@
 package com.example.onlinefooddeliverysb.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
@@ -16,11 +17,20 @@ public class Cart {
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
+    @JsonBackReference
     private User user;
 
     @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<CartItem> items = new ArrayList<>();
+
+    private double totalPrice;
+
+    public double calculateTotalPrice() {
+        return items.stream()
+                .mapToDouble(CartItem::getTotalPrice)
+                .sum();
+    }
 
     public Long getId() {
         return id;
@@ -46,9 +56,18 @@ public class Cart {
         this.items = items;
     }
 
-    public Cart(User user, List<CartItem> items) {
+    public double getTotalPrice() {
+        return totalPrice;
+    }
+
+    public void setTotalPrice(double totalPrice) {
+        this.totalPrice = totalPrice;
+    }
+
+    public Cart(User user, List<CartItem> items, double totalPrice) {
         this.user = user;
         this.items = items;
+        this.totalPrice = totalPrice;
     }
 
     public Cart() {
